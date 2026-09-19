@@ -46,7 +46,8 @@ summary CSVs, purely as a schema/quality example.
 | `credential_text` | Self-reported credential string (e.g. `NP`, `PA-C`, `CRNA`) |
 | `sex_code` | `M`/`F` |
 | `practitioner_type` | `NP` / `PA` / `CNS` / `CRNA` / `CNM` |
-| `practitioner_classification`, `practitioner_specialization` | From NUCC taxonomy |
+| `practitioner_classification` | NUCC classification (e.g. "Nurse Practitioner") |
+| `specialty` | NUCC sub-specialty (e.g. "Family", "Psychiatric/Mental Health", "Surgical") — blank when NPPES/NUCC has no finer breakdown for that taxonomy code (common for PA, always blank for CRNA/CNM) |
 | `matched_taxonomy_code`, `license_number`, `license_state` | From whichever taxonomy slot matched |
 | `primary_taxonomy_code` | Provider's NPPES-declared primary taxonomy (slot 1) |
 | `practice_address_line1/2`, `practice_city/state/zip`, `practice_phone`, `practice_fax` | Practice location — best for territory/geo marketing |
@@ -64,8 +65,13 @@ NPPES does not include email addresses; there is none in this dataset.
   it finds any duplicate `npi` value in the filtered table. `manifest.json`
   records `duplicate_npis_found` (always `0` in a successful build).
 - **Summary files**: each snapshot includes `summary_by_practitioner_type.csv`
-  (provider count per NP/PA/CNS/CRNA/CNM) and `summary_by_state.csv` (provider
-  count per `practice_state`), both mirrored into `latest/` and pushed to GitHub.
+  (provider count per NP/PA/CNS/CRNA/CNM), `summary_by_state.csv` (provider
+  count per `practice_state`), and `summary_by_specialty.csv` (provider count
+  per practitioner_type + specialty), all mirrored into `latest/` and pushed
+  to GitHub. `summary_by_state.csv` only breaks out the 50 states + DC + the 5
+  inhabited territories, and only when a state/territory has 25+ providers;
+  everything else (any other value, or a valid state under that threshold) is
+  rolled into a single `Other/Non-US Based` row.
 - **Sample files**: each snapshot also includes a `sample_midlevel_practitioners.csv`
   / `.parquet` — a random 1,000-row reservoir sample of the full table, same
   schema as the full dataset, safe to publish since it's a small subset.
@@ -78,8 +84,8 @@ license for **commercial use** of the code set — [see their permission
 request form](https://www.nucc.org). The underlying NPI/address/name data
 from NPPES itself is public domain. Since this dataset is intended for
 marketing, obtain a NUCC license before commercial use of the taxonomy
-description text, or replace `practitioner_classification` /
-`practitioner_specialization` with your own labels if you don't have one.
+description text, or replace `practitioner_classification` / `specialty`
+with your own labels if you don't have one.
 
 ## Directory layout
 

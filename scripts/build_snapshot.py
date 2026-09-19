@@ -23,6 +23,18 @@ PROCESSED_DIR = ROOT / "data" / "processed"
 RETENTION_MONTHS = 12
 TABLE_NAME = "midlevel_practitioners"
 
+# 50 states + DC + the 5 inhabited territories. Anything else (a typo,
+# a foreign country code, an APO/FPO military code, etc.) is not a US
+# state/territory for this summary's purposes.
+US_STATES_AND_TERRITORIES = {
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID",
+    "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS",
+    "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK",
+    "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV",
+    "WI", "WY", "DC", "PR", "VI", "GU", "AS", "MP",
+}
+MIN_STATE_SUMMARY_COUNT = 25
+
 
 def load_target_codes():
     with open(TAXONOMY_REF, newline="", encoding="utf-8") as f:
@@ -128,7 +140,7 @@ def main():
         {q('Provider Sex Code')} AS sex_code,
         tax_ref.practitioner_type AS practitioner_type,
         tax_ref.classification AS practitioner_classification,
-        tax_ref.specialization AS practitioner_specialization,
+        tax_ref.specialization AS specialty,
         matched.matched_taxonomy_code AS matched_taxonomy_code,
         matched.matched_license_number AS license_number,
         matched.matched_license_state AS license_state,
@@ -222,15 +234,38 @@ def main():
             ORDER BY provider_count DESC
         ) TO '{taxonomy_summary_path.as_posix()}' (HEADER, DELIMITER ',')
     """)
+    valid_states_sql = ",".join(f"'{s}'" for s in sorted(US_STATES_AND_TERRITORIES))
     con.execute(f"""
         COPY (
-            SELECT practice_state, COUNT(*) AS provider_count
-            FROM {TABLE_NAME}
-            GROUP BY practice_state
+            WITH raw_counts AS (
+                SELECT practice_state, COUNT(*) AS provider_count
+                FROM {TABLE_NAME}
+                GROUP BY practice_state
+            )
+            SELECT
+                CASE
+                    WHEN practice_state IN ({valid_states_sql}) AND provider_count >= {MIN_STATE_SUMMARY_COUNT}
+                    THEN practice_state
+                    ELSE 'Other/Non-US Based'
+                END AS practice_state,
+                SUM(provider_count) AS provider_count
+            FROM raw_counts
+            GROUP BY 1
             ORDER BY provider_count DESC
         ) TO '{state_summary_path.as_posix()}' (HEADER, DELIMITER ',')
     """)
-    print(f"Wrote {taxonomy_summary_path.name} and {state_summary_path.name}")
+
+    specialty_summary_path = out_dir / "summary_by_specialty.csv"
+    con.execute(f"""
+        COPY (
+            SELECT practitioner_type, COALESCE(NULLIF(TRIM(specialty), ''), '(none on file)') AS specialty,
+                   COUNT(*) AS provider_count
+            FROM {TABLE_NAME}
+            GROUP BY practitioner_type, specialty
+            ORDER BY practitioner_type, provider_count DESC
+        ) TO '{specialty_summary_path.as_posix()}' (HEADER, DELIMITER ',')
+    """)
+    print(f"Wrote {taxonomy_summary_path.name}, {state_summary_path.name}, and {specialty_summary_path.name}")
 
     sample_csv_path = out_dir / "sample_midlevel_practitioners.csv"
     sample_parquet_path = out_dir / "sample_midlevel_practitioners.parquet"
@@ -266,6 +301,7 @@ def main():
             "duckdb": duckdb_path.name,
             "summary_by_practitioner_type": taxonomy_summary_path.name,
             "summary_by_state": state_summary_path.name,
+            "summary_by_specialty": specialty_summary_path.name,
             "sample_csv": sample_csv_path.name,
             "sample_parquet": sample_parquet_path.name,
         },
@@ -304,6 +340,7 @@ def sync_latest_dir(snapshot_dir: Path):
         "manifest.json",
         "summary_by_practitioner_type.csv",
         "summary_by_state.csv",
+        "summary_by_specialty.csv",
         "sample_midlevel_practitioners.csv",
         "sample_midlevel_practitioners.parquet",
     ):
