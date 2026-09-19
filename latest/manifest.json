@@ -1,6 +1,6 @@
 {
   "snapshot_id": "2026-09",
-  "built_at_utc": "2026-09-19T03:44:06Z",
+  "built_at_utc": "2026-09-19T03:51:46Z",
   "source_file": "npidata_pfile_20050523-20260913.csv",
   "row_count": 807299,
   "duplicate_npis_found": 0,
@@ -13,6 +13,7 @@
     "duckdb": "midlevel_practitioners.duckdb",
     "summary_by_practitioner_type": "summary_by_practitioner_type.csv",
     "summary_by_state": "summary_by_state.csv",
+    "summary_by_specialty": "summary_by_specialty.csv",
     "sample_csv": "sample_midlevel_practitioners.csv",
     "sample_parquet": "sample_midlevel_practitioners.parquet"
   }

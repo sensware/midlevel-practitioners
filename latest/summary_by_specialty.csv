@@ -1,0 +1,57 @@
+practitioner_type,specialty,provider_count
+CNM,(none on file),12580
+CNS,(none on file),1882
+CNS,Adult Health,1405
+CNS,"Psychiatric/Mental Health, Adult",1155
+CNS,Psychiatric/Mental Health,1122
+CNS,Acute Care,501
+CNS,Family Health,451
+CNS,Gerontology,402
+CNS,Pediatrics,364
+CNS,Medical-Surgical,266
+CNS,Oncology,244
+CNS,"Psychiatric/Mental Health, Child & Adolescent",238
+CNS,Critical Care Medicine,217
+CNS,Long-Term Care,184
+CNS,Community Health/Public Health,170
+CNS,Women's Health,166
+CNS,Home Health,158
+CNS,Neonatal,108
+CNS,Perioperative,88
+CNS,Emergency,82
+CNS,"Psychiatric/Mental Health, Child & Family",57
+CNS,Neuroscience,50
+CNS,"Psychiatric/Mental Health, Geropsychiatric",41
+CNS,Perinatal,38
+CNS,School,38
+CNS,"Psychiatric/Mental Health, Community",35
+CNS,Holistic,33
+CNS,Informatics,32
+CNS,Rehabilitation,31
+CNS,Occupational Health,20
+CNS,Chronic Care,19
+CNS,Transplantation,10
+CNS,"Oncology, Pediatrics",9
+CNS,"Psychiatric/Mental Health, Chronically Ill",4
+CRNA,(none on file),76089
+NP,Family,239454
+NP,(none on file),97755
+NP,Psychiatric/Mental Health,59222
+NP,Adult Health,31865
+NP,Acute Care,27437
+NP,Pediatrics,23752
+NP,Primary Care,11250
+NP,Gerontology,10701
+NP,Women's Health,10485
+NP,Neonatal,4841
+NP,Obstetrics & Gynecology,2960
+NP,"Neonatal, Critical Care",2361
+NP,Critical Care Medicine,1480
+NP,"Pediatrics, Critical Care",1215
+NP,Occupational Health,396
+NP,Community Health,346
+NP,School,213
+NP,Perinatal,73
+PA,(none on file),133196
+PA,Medical,34763
+PA,Surgical,15245
