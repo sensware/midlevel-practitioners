@@ -7,6 +7,10 @@ DuckDB on every run, with the previous 12 monthly snapshots retained. Every
 build verifies NPI uniqueness before writing output, and also produces
 `summary_by_practitioner_type.csv` / `summary_by_state.csv` breakdowns.
 
+**The full dataset is never uploaded anywhere — it lives only on this
+machine.** GitHub gets a random 1,000-row sample (CSV + Parquet) plus the two
+summary CSVs, purely as a schema/quality example.
+
 ## Scope
 
 - **Practitioner types included** (57 NUCC taxonomy codes total, see
@@ -40,7 +44,9 @@ build verifies NPI uniqueness before writing output, and also produces
 | `primary_taxonomy_code` | Provider's NPPES-declared primary taxonomy (slot 1) |
 | `practice_address_line1/2`, `practice_city/state/zip`, `practice_phone`, `practice_fax` | Practice location — best for territory/geo marketing |
 | `mailing_address_line1/2`, `mailing_city/state/zip`, `mailing_phone`, `mailing_fax` | Business mailing address |
-| `enumeration_date`, `last_update_date`, `certification_date` | Record lifecycle dates |
+| `created_date` | NPPES `Provider Enumeration Date` — when the NPI was first issued |
+| `last_updated_date` | NPPES `Last Update Date` — most recent change to the NPPES record |
+| `certification_date` | NPPES `Certification Date` |
 | `is_sole_proprietor` | `Y`/`N` |
 
 NPPES does not include email addresses; there is none in this dataset.
@@ -52,7 +58,10 @@ NPPES does not include email addresses; there is none in this dataset.
   records `duplicate_npis_found` (always `0` in a successful build).
 - **Summary files**: each snapshot includes `summary_by_practitioner_type.csv`
   (provider count per NP/PA/CNS/CRNA/CNM) and `summary_by_state.csv` (provider
-  count per `practice_state`), both mirrored into `latest/`.
+  count per `practice_state`), both mirrored into `latest/` and pushed to GitHub.
+- **Sample files**: each snapshot also includes a `sample_midlevel_practitioners.csv`
+  / `.parquet` — a random 1,000-row reservoir sample of the full table, same
+  schema as the full dataset, safe to publish since it's a small subset.
 
 ## Compliance note (read before commercial use)
 
@@ -70,37 +79,32 @@ description text, or replace `practitioner_classification` /
 ```
 config/taxonomy_codes.csv        curated list of the 57 target taxonomy codes
 scripts/download_nppes.py        finds & downloads the current NPPES monthly zip
-scripts/build_snapshot.py        filters/transforms -> csv+parquet+duckdb+summaries, archives, prunes, syncs latest/
-scripts/run_monthly.py           orchestrates the above; deletes raw download; publishes latest/ to the `data` branch
-data/processed/YYYY-MM/          one dated snapshot per month (csv, parquet, duckdb, 2 summary csvs, manifest.json) — LOCAL ONLY
+scripts/build_snapshot.py        filters/transforms -> full csv+parquet+duckdb, summaries, 1000-row sample; archives, prunes, syncs latest/
+scripts/run_monthly.py           orchestrates the above; deletes raw download; commits+pushes latest/ to GitHub main
+data/processed/YYYY-MM/          one dated snapshot per month: FULL csv/parquet/duckdb, 2 summary csvs, sample csv+parquet, manifest.json — LOCAL ONLY, NEVER PUSHED
 data/current                     symlink to the latest data/processed/YYYY-MM — LOCAL ONLY
 data/raw/                        scratch space for the ~1.1GB zip / ~11.7GB extracted CSV; deleted after each run
-latest/                          current month's files, flat, gitignored on main — only ever committed on the `data` branch
+latest/                          current month's SMALL example outputs only (manifest, 2 summaries, sample csv+parquet) — GIT-TRACKED
 ```
 
-`data/`, `logs/`, and `latest/` are all gitignored **on `main`** — the full
-12-month archive and the `latest/` working copy live only on this machine.
-`main` (https://github.com/sensware/midlevel-practitioners) holds **only the
-pipeline code** and keeps normal, permanent commit history.
-
-The current snapshot instead publishes to a separate **`data` branch**
-(https://github.com/sensware/midlevel-practitioners/tree/data), flattened to
-just the output files at the branch root (`midlevel_practitioners.csv.gz`,
-`.parquet`, `.duckdb`, both summary CSVs, `manifest.json`). The CSV is
-gzip-compressed there since GitHub hard-blocks files over 100MB (the raw CSV
-alone is ~217MB). Each monthly publish force-pushes a fresh single commit to
-`data` from a throwaway git worktree — `main` is never checked out, modified,
-or rewritten by this process, and the `data` branch never accumulates old
-snapshots. Each snapshot's `manifest.json` records row count, build
-timestamp, duplicate-NPI count, and source filename for audit purposes.
+`data/`, `data/raw/`, and `logs/` are gitignored — the full dataset and
+12-month local archive live **only on this machine** and are never uploaded
+anywhere. `latest/` is the one thing that's git-tracked and pushed to GitHub
+(https://github.com/sensware/midlevel-practitioners), and it holds only:
+`manifest.json`, `summary_by_practitioner_type.csv`, `summary_by_state.csv`,
+`sample_midlevel_practitioners.csv`, and `sample_midlevel_practitioners.parquet`
+(a random 1,000-row subset). Since these files are always small (well under
+a megabyte total), `main` just gets a normal incremental commit each month —
+no branch squashing or history rewriting needed. Each `manifest.json` records
+the full dataset's row count, build timestamp, and duplicate-NPI count, even
+though the full data itself never leaves this machine.
 
 ## Retention
 
 The last **12** monthly snapshots are kept under `data/processed/` (local
-only); older ones are deleted automatically by `build_snapshot.py` after
-each run. Change `RETENTION_MONTHS` in that script to adjust. The `data`
-branch on GitHub always reflects just the current month regardless of this
-setting.
+only, full data); older ones are deleted automatically by `build_snapshot.py`
+after each run. Change `RETENTION_MONTHS` in that script to adjust. GitHub's
+`latest/` always reflects just the current month's example outputs.
 
 ## Running manually
 
@@ -110,9 +114,10 @@ python3 scripts/run_monthly.py
 ```
 
 This downloads the current NPPES full replacement file (~1.1GB zip, ~11.7GB
-extracted), filters it, writes `data/processed/<current-YYYY-MM>/`, and
-pushes `latest/` to the GitHub `data` branch. Takes roughly a few minutes on
-a 12-core/24GB machine; scales with source file size and disk/network speed.
+extracted), filters it, writes the full dataset to
+`data/processed/<current-YYYY-MM>/` (local only), and pushes the small
+`latest/` example (sample + summaries) to GitHub. Takes roughly a few minutes
+on a 12-core/24GB machine; scales with source file size and disk/network speed.
 
 ## Monthly automation
 

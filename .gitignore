@@ -5,7 +5,6 @@ logs/
 *.pyc
 __pycache__/
 
-# latest/ is published to the separate `data` branch only (single squashed
-# commit per month, via scripts/run_monthly.py) -- never committed on main,
-# so main's code history never carries large data blobs.
-latest/
+# latest/ IS tracked in git: it only ever holds small example outputs
+# (manifest, summary CSVs, 1000-row sample csv+parquet) -- never the full
+# dataset, which stays local-only under data/processed/.

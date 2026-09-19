@@ -128,8 +128,8 @@ def main():
         {q('Provider Business Mailing Address Postal Code')} AS mailing_zip,
         {q('Provider Business Mailing Address Telephone Number')} AS mailing_phone,
         {q('Provider Business Mailing Address Fax Number')} AS mailing_fax,
-        {q('Provider Enumeration Date')} AS enumeration_date,
-        {q('Last Update Date')} AS last_update_date,
+        {q('Provider Enumeration Date')} AS created_date,
+        {q('Last Update Date')} AS last_updated_date,
         {q('Certification Date')} AS certification_date,
         {q('Is Sole Proprietor')} AS is_sole_proprietor
     """
@@ -204,6 +204,17 @@ def main():
     """)
     print(f"Wrote {taxonomy_summary_path.name} and {state_summary_path.name}")
 
+    sample_csv_path = out_dir / "sample_midlevel_practitioners.csv"
+    sample_parquet_path = out_dir / "sample_midlevel_practitioners.parquet"
+    sample_size = min(1000, row_count)
+    con.execute(f"""
+        CREATE TABLE sample_{TABLE_NAME} AS
+        SELECT * FROM {TABLE_NAME} USING SAMPLE {sample_size} ROWS (reservoir, 42)
+    """)
+    con.execute(f"COPY sample_{TABLE_NAME} TO '{sample_csv_path.as_posix()}' (HEADER, DELIMITER ',')")
+    con.execute(f"COPY sample_{TABLE_NAME} TO '{sample_parquet_path.as_posix()}' (FORMAT PARQUET, COMPRESSION ZSTD)")
+    print(f"Wrote {sample_size}-row random sample: {sample_csv_path.name}, {sample_parquet_path.name}")
+
     con.close()
 
     if duckdb_path.exists():
@@ -219,12 +230,15 @@ def main():
         "row_count": row_count,
         "duplicate_npis_found": dup_count,
         "taxonomy_codes_included": len(target_codes),
+        "sample_size": sample_size,
         "files": {
             "csv": csv_path.name,
             "parquet": parquet_path.name,
             "duckdb": duckdb_path.name,
             "summary_by_practitioner_type": taxonomy_summary_path.name,
             "summary_by_state": state_summary_path.name,
+            "sample_csv": sample_csv_path.name,
+            "sample_parquet": sample_parquet_path.name,
         },
     }
     with open(out_dir / "manifest.json", "w") as f:
@@ -246,16 +260,12 @@ def update_current_pointer(snapshot_id: str):
     print(f"Updated data/current -> {target}")
 
 
-GITHUB_FILE_SIZE_WARN_BYTES = 90 * 1024 * 1024  # GitHub hard-blocks single files > 100MB
-
-
 def sync_latest_dir(snapshot_dir: Path):
-    """Copy the just-built snapshot's files into the git-tracked latest/ dir,
-    which always holds only the current month (full archive stays local-only
-    under data/processed/). The CSV is gzipped here since the raw CSV can
-    exceed GitHub's 100MB per-file push limit; parquet/duckdb are copied as-is."""
-    import gzip
-
+    """Copy the small, shareable outputs of the just-built snapshot into the
+    git-tracked latest/ dir: manifest, both summary CSVs, and the 1000-row
+    random sample (csv + parquet). The full csv/parquet/duckdb tables are
+    NEVER copied here -- they stay local-only under data/processed/; only
+    this small example set is pushed to GitHub."""
     latest_dir = ROOT / "latest"
     if latest_dir.exists():
         shutil.rmtree(latest_dir)
@@ -263,27 +273,14 @@ def sync_latest_dir(snapshot_dir: Path):
 
     for name in (
         "manifest.json",
-        f"{TABLE_NAME}.parquet",
-        f"{TABLE_NAME}.duckdb",
         "summary_by_practitioner_type.csv",
         "summary_by_state.csv",
+        "sample_midlevel_practitioners.csv",
+        "sample_midlevel_practitioners.parquet",
     ):
-        src = snapshot_dir / name
-        dest = latest_dir / name
-        shutil.copy2(src, dest)
-        if dest.stat().st_size > GITHUB_FILE_SIZE_WARN_BYTES:
-            print(f"WARNING: {dest.name} is {dest.stat().st_size/1e6:.0f}MB, "
-                  f"approaching GitHub's 100MB per-file push limit.")
+        shutil.copy2(snapshot_dir / name, latest_dir / name)
 
-    csv_src = snapshot_dir / f"{TABLE_NAME}.csv"
-    csv_gz_dest = latest_dir / f"{TABLE_NAME}.csv.gz"
-    with open(csv_src, "rb") as f_in, gzip.open(csv_gz_dest, "wb", compresslevel=6) as f_out:
-        shutil.copyfileobj(f_in, f_out)
-    if csv_gz_dest.stat().st_size > GITHUB_FILE_SIZE_WARN_BYTES:
-        print(f"WARNING: {csv_gz_dest.name} is {csv_gz_dest.stat().st_size/1e6:.0f}MB, "
-              f"approaching GitHub's 100MB per-file push limit.")
-
-    print(f"Synced current snapshot to {latest_dir} (git-tracked; CSV gzipped)")
+    print(f"Synced example outputs to {latest_dir} (git-tracked; full data stays local-only)")
 
 
 def prune_old_snapshots():
