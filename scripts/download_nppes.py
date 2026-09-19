@@ -34,6 +34,8 @@ def download(url: str, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     tmp = dest.with_suffix(dest.suffix + ".part")
+    interactive = sys.stdout.isatty()
+    last_reported_pct = -1
     with urllib.request.urlopen(req, timeout=60) as resp, open(tmp, "wb") as out:
         total = int(resp.headers.get("Content-Length", 0))
         written = 0
@@ -44,9 +46,14 @@ def download(url: str, dest: Path) -> Path:
                 break
             out.write(block)
             written += len(block)
-            if total:
-                pct = written / total * 100
+            if not total:
+                continue
+            pct = written / total * 100
+            if interactive:
                 print(f"\r  {written/1e6:,.0f} MB / {total/1e6:,.0f} MB ({pct:.1f}%)", end="", flush=True)
+            elif int(pct // 10) > last_reported_pct:
+                last_reported_pct = int(pct // 10)
+                print(f"  {written/1e6:,.0f} MB / {total/1e6:,.0f} MB ({pct:.0f}%)", flush=True)
     print()
     tmp.rename(dest)
     return dest

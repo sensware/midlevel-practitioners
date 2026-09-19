@@ -165,6 +165,16 @@ def main():
     row_count = con.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}").fetchone()[0]
     print(f"Matched {row_count:,} active individual midlevel-practitioner NPIs in {time.time()-t0:.0f}s")
 
+    dup_count = con.execute(
+        f"SELECT COUNT(*) FROM (SELECT npi FROM {TABLE_NAME} GROUP BY npi HAVING COUNT(*) > 1)"
+    ).fetchone()[0]
+    if dup_count:
+        raise RuntimeError(
+            f"Data integrity check failed: {dup_count} duplicate NPI value(s) found in "
+            f"{TABLE_NAME} -- NPI must be unique. Aborting before writing output files."
+        )
+    print("NPI uniqueness check passed: no duplicate NPIs.")
+
     out_dir = PROCESSED_DIR / snapshot_id
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / f"{TABLE_NAME}.csv"
@@ -173,6 +183,27 @@ def main():
 
     con.execute(f"COPY {TABLE_NAME} TO '{csv_path.as_posix()}' (HEADER, DELIMITER ',')")
     con.execute(f"COPY {TABLE_NAME} TO '{parquet_path.as_posix()}' (FORMAT PARQUET, COMPRESSION ZSTD)")
+
+    taxonomy_summary_path = out_dir / "summary_by_practitioner_type.csv"
+    state_summary_path = out_dir / "summary_by_state.csv"
+    con.execute(f"""
+        COPY (
+            SELECT practitioner_type, COUNT(*) AS provider_count
+            FROM {TABLE_NAME}
+            GROUP BY practitioner_type
+            ORDER BY provider_count DESC
+        ) TO '{taxonomy_summary_path.as_posix()}' (HEADER, DELIMITER ',')
+    """)
+    con.execute(f"""
+        COPY (
+            SELECT practice_state, COUNT(*) AS provider_count
+            FROM {TABLE_NAME}
+            GROUP BY practice_state
+            ORDER BY provider_count DESC
+        ) TO '{state_summary_path.as_posix()}' (HEADER, DELIMITER ',')
+    """)
+    print(f"Wrote {taxonomy_summary_path.name} and {state_summary_path.name}")
+
     con.close()
 
     if duckdb_path.exists():
@@ -186,11 +217,14 @@ def main():
         "built_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source_file": src_csv.name,
         "row_count": row_count,
+        "duplicate_npis_found": dup_count,
         "taxonomy_codes_included": len(target_codes),
         "files": {
             "csv": csv_path.name,
             "parquet": parquet_path.name,
             "duckdb": duckdb_path.name,
+            "summary_by_practitioner_type": taxonomy_summary_path.name,
+            "summary_by_state": state_summary_path.name,
         },
     }
     with open(out_dir / "manifest.json", "w") as f:
@@ -227,7 +261,13 @@ def sync_latest_dir(snapshot_dir: Path):
         shutil.rmtree(latest_dir)
     latest_dir.mkdir(parents=True)
 
-    for name in ("manifest.json", f"{TABLE_NAME}.parquet", f"{TABLE_NAME}.duckdb"):
+    for name in (
+        "manifest.json",
+        f"{TABLE_NAME}.parquet",
+        f"{TABLE_NAME}.duckdb",
+        "summary_by_practitioner_type.csv",
+        "summary_by_state.csv",
+    ):
         src = snapshot_dir / name
         dest = latest_dir / name
         shutil.copy2(src, dest)

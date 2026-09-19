@@ -52,12 +52,20 @@ def main():
     print(f"=== Done. Snapshot available at data/processed/{snapshot_id}/ and data/current ===")
 
 
+DATA_BRANCH = "data"
+
+
 def publish_latest_to_github(snapshot_id: str):
-    """GitHub holds ONLY the current snapshot (see README) -- the full monthly
-    archive stays local-only under data/processed/. To keep the remote repo
-    from accumulating a large blob in history every month, each publish
-    replaces history with a single fresh commit (orphan branch + force push)."""
+    """GitHub's `data` branch holds ONLY the current snapshot -- the full
+    monthly archive stays local-only under data/processed/. `main` (code)
+    keeps normal, permanent commit history and never carries data files.
+
+    Publishing happens in a throwaway git worktree on an orphan `data`
+    branch (single commit, force-pushed each run) so this never touches
+    main's working tree, index, or history."""
     import json
+    import shutil
+    import tempfile
 
     manifest_path = ROOT / "latest" / "manifest.json"
     row_count = None
@@ -71,15 +79,26 @@ def publish_latest_to_github(snapshot_id: str):
         print("No 'origin' git remote configured -- skipping GitHub publish.")
         return
 
-    run(["git", "checkout", "--orphan", "publish-tmp"], cwd=ROOT)
-    run(["git", "add", "-A"], cwd=ROOT)
-    msg = f"Update latest NPPES snapshot: {snapshot_id}"
-    if row_count is not None:
-        msg += f" ({row_count:,} practitioners)"
-    run(["git", "commit", "-q", "-m", msg], cwd=ROOT)
-    run(["git", "branch", "-M", "main"], cwd=ROOT)
-    run(["git", "push", "--force", "origin", "main"], cwd=ROOT)
-    print(f"Pushed latest snapshot ({snapshot_id}) to GitHub, history squashed to one commit.")
+    worktree_dir = Path(tempfile.mkdtemp(prefix="mlp-publish-"))
+    worktree_dir.rmdir()  # git worktree add requires the path not exist yet
+    try:
+        run(["git", "worktree", "add", "--detach", str(worktree_dir)], cwd=ROOT)
+        run(["git", "checkout", "--orphan", DATA_BRANCH], cwd=worktree_dir)
+        run(["git", "rm", "-rf", "-q", "."], cwd=worktree_dir)
+
+        for item in (ROOT / "latest").iterdir():
+            dest = worktree_dir / item.name
+            shutil.copy2(item, dest) if item.is_file() else shutil.copytree(item, dest)
+
+        run(["git", "add", "-A"], cwd=worktree_dir)
+        msg = f"Update latest NPPES snapshot: {snapshot_id}"
+        if row_count is not None:
+            msg += f" ({row_count:,} practitioners)"
+        run(["git", "commit", "-q", "-m", msg], cwd=worktree_dir)
+        run(["git", "push", "--force", "origin", f"{DATA_BRANCH}:{DATA_BRANCH}"], cwd=worktree_dir)
+        print(f"Pushed latest snapshot ({snapshot_id}) to GitHub branch '{DATA_BRANCH}', history squashed to one commit.")
+    finally:
+        run(["git", "worktree", "remove", "--force", str(worktree_dir)], cwd=ROOT)
 
 
 if __name__ == "__main__":
