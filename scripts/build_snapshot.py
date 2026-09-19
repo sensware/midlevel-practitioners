@@ -45,16 +45,29 @@ def q(col: str) -> str:
     return '"' + col.replace('"', '""') + '"'
 
 
+def licensed_condition(license_num_col: str, license_state_col: str) -> str:
+    """A taxonomy slot counts as 'licensed' only if it has both a license
+    number and a license state on file -- NPPES has no separate license
+    active/expired flag, so a populated license is the closest available
+    signal that the provider is an actively licensed practitioner."""
+    return (
+        f"TRIM(COALESCE({q(license_num_col)}, '')) <> '' "
+        f"AND TRIM(COALESCE({q(license_state_col)}, '')) <> ''"
+    )
+
+
 def build_matched_case(taxonomy_cols, license_num_cols, license_state_cols, switch_cols, target_codes_sql):
-    """Build three parallel CASE expressions (code / license number / license state),
-    preferring a slot marked as the primary taxonomy, falling back to the first
-    matching slot in declared order."""
+    """Build three parallel CASE expressions (code / license number / license
+    state). Only considers slots that match a target taxonomy code AND have a
+    license on file, preferring the slot marked as the primary taxonomy. Rows
+    reaching this CASE are guaranteed (by the WHERE clause) to have at least
+    one such slot, so no unlicensed fallback tier is needed."""
     n = len(taxonomy_cols)
 
     def whens(field_cols, require_primary):
         lines = []
         for i in range(n):
-            cond = f"{q(taxonomy_cols[i])} IN ({target_codes_sql})"
+            cond = f"{q(taxonomy_cols[i])} IN ({target_codes_sql}) AND {licensed_condition(license_num_cols[i], license_state_cols[i])}"
             if require_primary:
                 cond += f" AND UPPER(TRIM({q(switch_cols[i])})) = 'Y'"
             lines.append(f"WHEN {cond} THEN {q(field_cols[i])}")
@@ -93,7 +106,13 @@ def main():
     print(f"Found {len(taxonomy_cols)} taxonomy slots in source file.")
 
     matched = build_matched_case(taxonomy_cols, license_num_cols, license_state_cols, switch_cols, target_codes_sql)
-    taxonomy_filter = " OR ".join(f"{q(c)} IN ({target_codes_sql})" for c in taxonomy_cols)
+    # A row qualifies only if at least one slot both matches a target taxonomy
+    # AND has a license on file -- see licensed_condition().
+    taxonomy_only_filter = " OR ".join(f"{q(c)} IN ({target_codes_sql})" for c in taxonomy_cols)
+    taxonomy_filter = " OR ".join(
+        f"({q(taxonomy_cols[i])} IN ({target_codes_sql}) AND {licensed_condition(license_num_cols[i], license_state_cols[i])})"
+        for i in range(len(taxonomy_cols))
+    )
 
     # Output columns: NPI identity, name, credential, gender, matched practitioner
     # taxonomy/license, primary declared taxonomy, mailing + practice addresses,
@@ -163,7 +182,16 @@ def main():
     t0 = time.time()
     con.execute(f"CREATE TABLE {TABLE_NAME} AS {query}")
     row_count = con.execute(f"SELECT COUNT(*) FROM {TABLE_NAME}").fetchone()[0]
-    print(f"Matched {row_count:,} active individual midlevel-practitioner NPIs in {time.time()-t0:.0f}s")
+    print(f"Matched {row_count:,} active, licensed individual midlevel-practitioner NPIs in {time.time()-t0:.0f}s")
+
+    unlicensed_excluded = con.execute(f"""
+        SELECT COUNT(*) FROM {read_csv_expr}
+        WHERE {q('Entity Type Code')} = '1'
+          AND ({q('NPI Deactivation Date')} IS NULL OR TRIM({q('NPI Deactivation Date')}) = '')
+          AND ({taxonomy_only_filter})
+          AND NOT ({taxonomy_filter})
+    """).fetchone()[0]
+    print(f"Excluded {unlicensed_excluded:,} otherwise-matching active NPIs with no license on file for a target taxonomy.")
 
     dup_count = con.execute(
         f"SELECT COUNT(*) FROM (SELECT npi FROM {TABLE_NAME} GROUP BY npi HAVING COUNT(*) > 1)"
@@ -229,6 +257,7 @@ def main():
         "source_file": src_csv.name,
         "row_count": row_count,
         "duplicate_npis_found": dup_count,
+        "unlicensed_matching_npis_excluded": unlicensed_excluded,
         "taxonomy_codes_included": len(target_codes),
         "sample_size": sample_size,
         "files": {

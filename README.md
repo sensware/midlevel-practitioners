@@ -26,6 +26,13 @@ summary CSVs, purely as a schema/quality example.
   NPIs (Type 2) are excluded.
 - **Geography**: All U.S. states/territories.
 - **Active only**: Records with a populated `NPI Deactivation Date` are excluded.
+- **Licensed only**: a record is only included if at least one of its matching
+  taxonomy slots has BOTH a license number and a license state on file.
+  NPPES has no separate "license active/expired" flag, so a populated license
+  is the closest signal it provides that the provider is actually licensed
+  (as opposed to just holding a taxonomy code with no attached credential).
+  This currently excludes roughly 5% of otherwise-matching active NPIs, most
+  of them PAs — see `unlicensed_matching_npis_excluded` in `manifest.json`.
 - A provider is included if **any** of their up to 15 taxonomy slots matches
   the target list, not just their primary taxonomy — the primary slot is
   preferred when picking which matched code/license to report.
