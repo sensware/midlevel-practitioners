@@ -59,22 +59,30 @@ description text, or replace `practitioner_classification` /
 ```
 config/taxonomy_codes.csv        curated list of the 57 target taxonomy codes
 scripts/download_nppes.py        finds & downloads the current NPPES monthly zip
-scripts/build_snapshot.py        filters/transforms -> csv+parquet+duckdb, archives, prunes
-scripts/run_monthly.py           orchestrates the two scripts above; deletes raw download after
-data/processed/YYYY-MM/          one dated snapshot per month (csv, parquet, duckdb, manifest.json)
-data/current                     symlink to the latest data/processed/YYYY-MM
-data/raw/                        scratch space for the ~1.1GB zip / ~11.7GB extracted CSV; NOT retained
+scripts/build_snapshot.py        filters/transforms -> csv+parquet+duckdb, archives, prunes, syncs latest/
+scripts/run_monthly.py           orchestrates the above; deletes raw download; publishes latest/ to GitHub
+data/processed/YYYY-MM/          one dated snapshot per month (csv, parquet, duckdb, manifest.json) — LOCAL ONLY
+data/current                     symlink to the latest data/processed/YYYY-MM — LOCAL ONLY
+data/raw/                        scratch space for the ~1.1GB zip / ~11.7GB extracted CSV; deleted after each run
+latest/                          current month only (csv.gz, parquet, duckdb, manifest.json) — GIT-TRACKED
 ```
 
-`data/` and `logs/` are gitignored — only the pipeline code is version
-controlled. Each monthly snapshot's `manifest.json` records row count, build
-timestamp, and source filename for audit purposes.
+`data/` and `logs/` are gitignored — the full 12-month archive lives **only
+on this machine**. `latest/` is the one thing pushed to GitHub
+(https://github.com/sensware/midlevel-practitioners), and it holds **only
+the current month**. The CSV is gzip-compressed there (GitHub hard-blocks
+files over 100MB; the raw CSV alone is ~217MB). Each monthly publish squashes
+the remote history to a single fresh commit, so the GitHub repo never
+accumulates old snapshots — anyone who wants history needs the local archive.
+Each snapshot's `manifest.json` records row count, build timestamp, and
+source filename for audit purposes.
 
 ## Retention
 
-The last **12** monthly snapshots are kept under `data/processed/`; older
-ones are deleted automatically by `build_snapshot.py` after each run.
-Change `RETENTION_MONTHS` in that script to adjust.
+The last **12** monthly snapshots are kept under `data/processed/` (local
+only); older ones are deleted automatically by `build_snapshot.py` after
+each run. Change `RETENTION_MONTHS` in that script to adjust. GitHub always
+reflects just the current month regardless of this setting.
 
 ## Running manually
 
@@ -84,13 +92,19 @@ python3 scripts/run_monthly.py
 ```
 
 This downloads the current NPPES full replacement file (~1.1GB zip, ~11.7GB
-extracted), filters it, and writes `data/processed/<current-YYYY-MM>/`. Takes
-roughly a few minutes on a 12-core/24GB machine; scales with source file size
-and disk/network speed.
+extracted), filters it, writes `data/processed/<current-YYYY-MM>/`, and
+pushes `latest/` to GitHub. Takes roughly a few minutes on a 12-core/24GB
+machine; scales with source file size and disk/network speed.
 
 ## Monthly automation
 
 CMS republishes the full NPPES file on/around the second Monday of each
-month. A scheduled cloud agent runs `scripts/run_monthly.py` monthly (see the
-`schedule` skill / cron entry associated with this repo) so the dataset
-stays current without manual action.
+month. A local cron job runs `scripts/run_monthly.py` on the **15th of each
+month at 06:00** so the dataset stays current without manual action:
+
+```
+0 6 15 * * cd /home/luke/source/Midlevel-Practitioners && /usr/bin/python3 scripts/run_monthly.py >> logs/cron_$(date +\%Y-\%m).log 2>&1
+```
+
+Check `logs/cron_YYYY-MM.log` after the 15th each month to confirm the run
+succeeded (or check `latest/manifest.json`'s `built_at_utc`/`row_count`).
