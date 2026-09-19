@@ -1,0 +1,9 @@
+data/raw/
+data/processed/
+data/current
+logs/
+*.pyc
+__pycache__/
+
+# latest/ IS tracked in git (current snapshot only); full monthly archive
+# lives only in data/processed/ locally, per RETENTION_MONTHS.

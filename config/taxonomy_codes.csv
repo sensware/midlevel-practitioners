@@ -1,0 +1,58 @@
+taxonomy_code,practitioner_type,classification,specialization,display_name
+367A00000X,CNM,Advanced Practice Midwife,,Advanced Practice Midwife
+364S00000X,CNS,Clinical Nurse Specialist,,Clinical Nurse Specialist
+364SA2100X,CNS,Clinical Nurse Specialist,Acute Care,Acute Care Clinical Nurse Specialist
+364SA2200X,CNS,Clinical Nurse Specialist,Adult Health,Adult Health Clinical Nurse Specialist
+364SC0200X,CNS,Clinical Nurse Specialist,Critical Care Medicine,Critical Care Medicine Clinical Nurse Specialist
+364SC1501X,CNS,Clinical Nurse Specialist,Community Health/Public Health,Community Health/Public Health Clinical Nurse Specialist
+364SC2300X,CNS,Clinical Nurse Specialist,Chronic Care,Chronic Care Clinical Nurse Specialist
+364SE0003X,CNS,Clinical Nurse Specialist,Emergency,Emergency Clinical Nurse Specialist
+364SE1400X,CNS,Clinical Nurse Specialist,Ethics,Ethics Clinical Nurse Specialist
+364SF0001X,CNS,Clinical Nurse Specialist,Family Health,Family Health Clinical Nurse Specialist
+364SG0600X,CNS,Clinical Nurse Specialist,Gerontology,Gerontology Clinical Nurse Specialist
+364SH0200X,CNS,Clinical Nurse Specialist,Home Health,Home Health Clinical Nurse Specialist
+364SH1100X,CNS,Clinical Nurse Specialist,Holistic,Holistic Clinical Nurse Specialist
+364SI0800X,CNS,Clinical Nurse Specialist,Informatics,Informatics Clinical Nurse Specialist
+364SL0600X,CNS,Clinical Nurse Specialist,Long-Term Care,Long-Term Care Clinical Nurse Specialist
+364SM0705X,CNS,Clinical Nurse Specialist,Medical-Surgical,Medical-Surgical Clinical Nurse Specialist
+364SN0000X,CNS,Clinical Nurse Specialist,Neonatal,Neonatal Clinical Nurse Specialist
+364SN0800X,CNS,Clinical Nurse Specialist,Neuroscience,Neuroscience Clinical Nurse Specialist
+364SP0200X,CNS,Clinical Nurse Specialist,Pediatrics,Pediatric Clinical Nurse Specialist
+364SP0807X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Child & Adolescent",Child & Adolescent Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0808X,CNS,Clinical Nurse Specialist,Psychiatric/Mental Health,Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0809X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Adult",Adult Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0810X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Child & Family",Child & Family Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0811X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Chronically Ill",Chronically Ill Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0812X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Community",Community Psychiatric/Mental Health Clinical Nurse Specialist
+364SP0813X,CNS,Clinical Nurse Specialist,"Psychiatric/Mental Health, Geropsychiatric",Geropsychiatric Psychiatric/Mental Health Clinical Nurse Specialist
+364SP1700X,CNS,Clinical Nurse Specialist,Perinatal,Perinatal Clinical Nurse Specialist
+364SP2800X,CNS,Clinical Nurse Specialist,Perioperative,Perioperative Clinical Nurse Specialist
+364SR0400X,CNS,Clinical Nurse Specialist,Rehabilitation,Rehabilitation Clinical Nurse Specialist
+364SS0200X,CNS,Clinical Nurse Specialist,School,School Clinical Nurse Specialist
+364ST0500X,CNS,Clinical Nurse Specialist,Transplantation,Transplantation Clinical Nurse Specialist
+364SW0102X,CNS,Clinical Nurse Specialist,Women's Health,Women's Health Clinical Nurse Specialist
+364SX0106X,CNS,Clinical Nurse Specialist,Occupational Health,Occupational Health Clinical Nurse Specialist
+364SX0200X,CNS,Clinical Nurse Specialist,Oncology,Oncology Clinical Nurse Specialist
+364SX0204X,CNS,Clinical Nurse Specialist,"Oncology, Pediatrics",Pediatric Oncology Clinical Nurse Specialist
+367500000X,CRNA,"Nurse Anesthetist, Certified Registered",,Certified Registered Nurse Anesthetist
+363L00000X,NP,Nurse Practitioner,,Nurse Practitioner
+363LA2100X,NP,Nurse Practitioner,Acute Care,Acute Care Nurse Practitioner
+363LA2200X,NP,Nurse Practitioner,Adult Health,Adult Health Nurse Practitioner
+363LC0200X,NP,Nurse Practitioner,Critical Care Medicine,Critical Care Medicine Nurse Practitioner
+363LC1500X,NP,Nurse Practitioner,Community Health,Community Health Nurse Practitioner
+363LF0000X,NP,Nurse Practitioner,Family,Family Nurse Practitioner
+363LG0600X,NP,Nurse Practitioner,Gerontology,Gerontology Nurse Practitioner
+363LN0000X,NP,Nurse Practitioner,Neonatal,Neonatal Nurse Practitioner
+363LN0005X,NP,Nurse Practitioner,"Neonatal, Critical Care",Critical Care Neonatal Nurse Practitioner
+363LP0200X,NP,Nurse Practitioner,Pediatrics,Pediatric Nurse Practitioner
+363LP0222X,NP,Nurse Practitioner,"Pediatrics, Critical Care",Critical Care Pediatric Nurse Practitioner
+363LP0808X,NP,Nurse Practitioner,Psychiatric/Mental Health,Psychiatric/Mental Health Nurse Practitioner
+363LP1700X,NP,Nurse Practitioner,Perinatal,Perinatal Nurse Practitioner
+363LP2300X,NP,Nurse Practitioner,Primary Care,Primary Care Nurse Practitioner
+363LS0200X,NP,Nurse Practitioner,School,School Nurse Practitioner
+363LW0102X,NP,Nurse Practitioner,Women's Health,Women's Health Nurse Practitioner
+363LX0001X,NP,Nurse Practitioner,Obstetrics & Gynecology,Obstetrics & Gynecology Nurse Practitioner
+363LX0106X,NP,Nurse Practitioner,Occupational Health,Occupational Health Nurse Practitioner
+363A00000X,PA,Physician Assistant,,Physician Assistant
+363AM0700X,PA,Physician Assistant,Medical,Medical Physician Assistant
+363AS0400X,PA,Physician Assistant,Surgical,Surgical Physician Assistant
