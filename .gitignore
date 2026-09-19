@@ -4,6 +4,7 @@ data/current
 logs/
 *.pyc
 __pycache__/
+.env
 
 # latest/ IS tracked in git: it only ever holds small example outputs
 # (manifest, summary CSVs, 1000-row sample csv+parquet) -- never the full

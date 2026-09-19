@@ -122,12 +122,24 @@ on a 12-core/24GB machine; scales with source file size and disk/network speed.
 ## Monthly automation
 
 CMS republishes the full NPPES file on/around the second Monday of each
-month. A local cron job runs `scripts/run_monthly.py` on the **15th of each
-month at 06:00** so the dataset stays current without manual action:
+month. A local cron job runs `scripts/run_monthly.sh` on the **15th of each
+month at 06:00** so the dataset stays current without manual action.
+
+Setup (one-time, per machine):
 
 ```
-0 6 15 * * cd /home/luke/source/Midlevel-Practitioners && /usr/bin/python3 scripts/run_monthly.py >> logs/cron_$(date +\%Y-\%m).log 2>&1
+cp .env.example .env
+# edit .env and set MLP_REPO_DIR to the absolute path of your clone
+crontab -e
+# add:
+0 6 15 * * /absolute/path/to/your/clone/scripts/run_monthly.sh
 ```
+
+`scripts/run_monthly.sh` reads `MLP_REPO_DIR` from `.env` (gitignored,
+machine-specific) and cd's there before running `run_monthly.py` — the
+crontab entry itself still needs one absolute path to locate the wrapper
+script (cron has no notion of a working directory), but that entry lives
+only in your local crontab, never in this repo.
 
 Check `logs/cron_YYYY-MM.log` after the 15th each month to confirm the run
 succeeded (or check `latest/manifest.json`'s `built_at_utc`/`row_count`).
