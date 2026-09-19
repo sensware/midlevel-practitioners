@@ -3,7 +3,9 @@
 A monthly-refreshed list of active, individually-enumerated U.S. midlevel
 practitioners (non-physician clinicians who can see patients and prescribe
 medication), built from the CMS NPPES NPI file. Output as CSV, Parquet, and
-DuckDB on every run, with the previous 12 monthly snapshots retained.
+DuckDB on every run, with the previous 12 monthly snapshots retained. Every
+build verifies NPI uniqueness before writing output, and also produces
+`summary_by_practitioner_type.csv` / `summary_by_state.csv` breakdowns.
 
 ## Scope
 
@@ -43,6 +45,15 @@ DuckDB on every run, with the previous 12 monthly snapshots retained.
 
 NPPES does not include email addresses; there is none in this dataset.
 
+## Data quality checks
+
+- **NPI uniqueness**: `build_snapshot.py` aborts (no output files written) if
+  it finds any duplicate `npi` value in the filtered table. `manifest.json`
+  records `duplicate_npis_found` (always `0` in a successful build).
+- **Summary files**: each snapshot includes `summary_by_practitioner_type.csv`
+  (provider count per NP/PA/CNS/CRNA/CNM) and `summary_by_state.csv` (provider
+  count per `practice_state`), both mirrored into `latest/`.
+
 ## Compliance note (read before commercial use)
 
 Taxonomy code **descriptions** (classification/specialization text) come from
@@ -59,30 +70,37 @@ description text, or replace `practitioner_classification` /
 ```
 config/taxonomy_codes.csv        curated list of the 57 target taxonomy codes
 scripts/download_nppes.py        finds & downloads the current NPPES monthly zip
-scripts/build_snapshot.py        filters/transforms -> csv+parquet+duckdb, archives, prunes, syncs latest/
-scripts/run_monthly.py           orchestrates the above; deletes raw download; publishes latest/ to GitHub
-data/processed/YYYY-MM/          one dated snapshot per month (csv, parquet, duckdb, manifest.json) — LOCAL ONLY
+scripts/build_snapshot.py        filters/transforms -> csv+parquet+duckdb+summaries, archives, prunes, syncs latest/
+scripts/run_monthly.py           orchestrates the above; deletes raw download; publishes latest/ to the `data` branch
+data/processed/YYYY-MM/          one dated snapshot per month (csv, parquet, duckdb, 2 summary csvs, manifest.json) — LOCAL ONLY
 data/current                     symlink to the latest data/processed/YYYY-MM — LOCAL ONLY
 data/raw/                        scratch space for the ~1.1GB zip / ~11.7GB extracted CSV; deleted after each run
-latest/                          current month only (csv.gz, parquet, duckdb, manifest.json) — GIT-TRACKED
+latest/                          current month's files, flat, gitignored on main — only ever committed on the `data` branch
 ```
 
-`data/` and `logs/` are gitignored — the full 12-month archive lives **only
-on this machine**. `latest/` is the one thing pushed to GitHub
-(https://github.com/sensware/midlevel-practitioners), and it holds **only
-the current month**. The CSV is gzip-compressed there (GitHub hard-blocks
-files over 100MB; the raw CSV alone is ~217MB). Each monthly publish squashes
-the remote history to a single fresh commit, so the GitHub repo never
-accumulates old snapshots — anyone who wants history needs the local archive.
-Each snapshot's `manifest.json` records row count, build timestamp, and
-source filename for audit purposes.
+`data/`, `logs/`, and `latest/` are all gitignored **on `main`** — the full
+12-month archive and the `latest/` working copy live only on this machine.
+`main` (https://github.com/sensware/midlevel-practitioners) holds **only the
+pipeline code** and keeps normal, permanent commit history.
+
+The current snapshot instead publishes to a separate **`data` branch**
+(https://github.com/sensware/midlevel-practitioners/tree/data), flattened to
+just the output files at the branch root (`midlevel_practitioners.csv.gz`,
+`.parquet`, `.duckdb`, both summary CSVs, `manifest.json`). The CSV is
+gzip-compressed there since GitHub hard-blocks files over 100MB (the raw CSV
+alone is ~217MB). Each monthly publish force-pushes a fresh single commit to
+`data` from a throwaway git worktree — `main` is never checked out, modified,
+or rewritten by this process, and the `data` branch never accumulates old
+snapshots. Each snapshot's `manifest.json` records row count, build
+timestamp, duplicate-NPI count, and source filename for audit purposes.
 
 ## Retention
 
 The last **12** monthly snapshots are kept under `data/processed/` (local
 only); older ones are deleted automatically by `build_snapshot.py` after
-each run. Change `RETENTION_MONTHS` in that script to adjust. GitHub always
-reflects just the current month regardless of this setting.
+each run. Change `RETENTION_MONTHS` in that script to adjust. The `data`
+branch on GitHub always reflects just the current month regardless of this
+setting.
 
 ## Running manually
 
@@ -93,8 +111,8 @@ python3 scripts/run_monthly.py
 
 This downloads the current NPPES full replacement file (~1.1GB zip, ~11.7GB
 extracted), filters it, writes `data/processed/<current-YYYY-MM>/`, and
-pushes `latest/` to GitHub. Takes roughly a few minutes on a 12-core/24GB
-machine; scales with source file size and disk/network speed.
+pushes `latest/` to the GitHub `data` branch. Takes roughly a few minutes on
+a 12-core/24GB machine; scales with source file size and disk/network speed.
 
 ## Monthly automation
 
